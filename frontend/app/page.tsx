@@ -1,9 +1,24 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 export default function Home() {
-  const menu = [
-    { id: 1, name: "Nasi Goreng", price: 15000, category: "Food" },
-    { id: 2, name: "Mie Ayam", price: 12000, category: "Food" },
-    { id: 3, name: "Es Teh", price: 5000, category: "Drink" },
-  ];
+  type MenuItem = {
+    name: string;
+    price: number;
+    category: string;
+  };
+
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/item")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+        setMenu(data);
+      });
+  }, []);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -28,7 +43,7 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8">
         {menu.map((item) => (
           <div
-            key={item.id}
+            key={item.name}
             className="bg-white rounded-2xl shadow-md p-5 hover:shadow-lg transition"
           >
             <h2 className="text-xl font-bold text-gray-800">
