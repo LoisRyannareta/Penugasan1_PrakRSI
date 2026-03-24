@@ -1,3 +1,6 @@
+"use client";
+import { useEffect, useState } from "react";
+
 export default function Home() {
   const menu = [
     { id: 1, name: "Nasi Goreng", price: 15000, category: "Food" },
