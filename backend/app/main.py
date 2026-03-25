@@ -29,8 +29,21 @@ menu_db = [
 # CREATE (POST)
 @app.post("/item")
 def create_item(item: MenuItem):
-    menu_db.append(item.dict())  # simpan ke list
-    return {"message": "Item created", "data": item}
+    new_id = len(menu_db) + 1
+
+    new_item = {
+        "id": new_id,
+        "name": item.name,
+        "price": item.price,
+        "category": item.category
+    }
+
+    menu_db.append(new_item)
+
+    return {
+        "message": "Item created",
+        "data": new_item
+    }
 
 # READ (GET)
 @app.get("/item")
