@@ -58,7 +58,7 @@ export default function Home() {
           {/* icon cart */}
           <button
             onClick={() => setShowCart(!showCart)}
-            className="hover:etxt-orange-500"
+            className="hover:text-orange-500"
           >
             🛒 ({cart.length})
           </button>
@@ -101,7 +101,7 @@ export default function Home() {
       {showCart && (
         <div className="fixed top-0 right-0 w-80 h-full bg-white shadow-lg p-5 z-50">
 
-          <div className="flex justifity-between item-center mb-4">
+          <div className="flex justify-between item-center mb-4">
             <h2 className="text-xl font-bols mb-4">Keranjang</h2>
             <button onClick={() => setShowCart(false)}>❌</button>
           </div>
