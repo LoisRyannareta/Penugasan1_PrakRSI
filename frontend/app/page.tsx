@@ -9,6 +9,10 @@ type MenuItem = {
   category: string;
 };
 
+type CartItem = MenuItem & {
+  quantity: number;
+};
+
 export default function Home() {
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,6 +20,30 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const fetched = useRef(false);
   const menuSectionRef = useRef<HTMLElement>(null);
+
+  // Cart state
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
+  const [checkoutTotal, setCheckoutTotal] = useState(0);
+  const [checkoutItems, setCheckoutItems] = useState(0);
+
+  // Load cart from localStorage on mount
+  useEffect(() => {
+    const savedCart = localStorage.getItem("restobyte_cart");
+    if (savedCart) {
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch (e) {
+        console.error("Failed to parse cart from localStorage", e);
+      }
+    }
+  }, []);
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("restobyte_cart", JSON.stringify(cart));
+  }, [cart]);
 
   // Scroll to menu section
   const scrollToMenu = () => {
@@ -67,9 +95,72 @@ export default function Home() {
     return menu.filter((item) => item.category === activeCategory);
   }, [menu, activeCategory]);
 
-  // Handle order button click
-  const handleOrder = (itemName: string) => {
-    alert(`✅ "${itemName}" added to your order! Proceed to checkout.`);
+  // Cart functions
+  const addToCart = (item: MenuItem) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
+      if (existingItem) {
+        // Increase quantity if already in cart
+        return prevCart.map((cartItem) =>
+          cartItem.id === item.id
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            : cartItem
+        );
+      } else {
+        // Add new item with quantity 1
+        return [...prevCart, { ...item, quantity: 1 }];
+      }
+    });
+    // Optional: show a brief alert or toast
+    alert(`✅ "${item.name}" added to cart!`);
+  };
+
+  const removeFromCart = (id: number) => {
+    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  };
+
+  const updateQuantity = (id: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeFromCart(id);
+      return;
+    }
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        item.id === id ? { ...item, quantity: newQuantity } : item
+      )
+    );
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const cartTotal = useMemo(() => {
+    return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+  }, [cart]);
+
+  const totalItems = useMemo(() => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
+  }, [cart]);
+
+  // Checkout handler: open confirmation modal, close cart sidebar
+  const handleCheckout = () => {
+    setCheckoutTotal(cartTotal);
+    setCheckoutItems(totalItems);
+    setShowCheckoutConfirm(true);
+    setCartOpen(false);
+  };
+
+  // Confirm order: clear cart, close modal, show success message
+  const confirmOrder = () => {
+    clearCart();
+    setShowCheckoutConfirm(false);
+    alert("🎉 Order placed successfully! Thank you for your purchase.");
+    // You could also show a toast or redirect to a thank-you page
+  };
+
+  const cancelCheckout = () => {
+    setShowCheckoutConfirm(false);
   };
 
   return (
@@ -81,7 +172,7 @@ export default function Home() {
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
               🍽️ RestoByte
             </h1>
-            <div className="flex gap-6 text-sm font-medium">
+            <div className="flex gap-6 text-sm font-medium items-center">
               <button
                 onClick={scrollToMenu}
                 className="hover:text-orange-500 transition-colors duration-200 cursor-pointer"
@@ -99,6 +190,31 @@ export default function Home() {
                 className="hover:text-orange-500 transition-colors duration-200 cursor-pointer"
               >
                 About
+              </button>
+              {/* Cart Button */}
+              <button
+                onClick={() => setCartOpen(true)}
+                className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-6 h-6"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
+                  />
+                </svg>
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {totalItems}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -161,7 +277,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* MENU SECTION*/}
+      {/* MENU SECTION */}
       <section ref={menuSectionRef} className="max-w-7xl mx-auto px-4 pb-20">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
           <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
@@ -247,10 +363,10 @@ export default function Home() {
                           Rp {item.price.toLocaleString()}
                         </p>
                         <button
-                          onClick={() => handleOrder(item.name)}
+                          onClick={() => addToCart(item)}
                           className="mt-5 w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"
                         >
-                          Order Now
+                          Add to Cart
                         </button>
                       </div>
                     </div>
@@ -262,11 +378,132 @@ export default function Home() {
         )}
       </section>
 
-      {/* FOOTER*/}
+      {/* CART SIDEBAR */}
+      {cartOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setCartOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl flex flex-col">
+            {/* Header */}
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                🛒 Your Cart ({totalItems} item{totalItems !== 1 && "s"})
+              </h2>
+              <button
+                onClick={() => setCartOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Cart Items */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {cart.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">Your cart is empty.</p>
+              ) : (
+                cart.map((item) => (
+                  <div key={item.id} className="flex gap-3 border-b pb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{item.name}</h3>
+                      <p className="text-orange-500 font-bold">
+                        Rp {item.price.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold"
+                      >
+                        -
+                      </button>
+                      <span className="w-6 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold"
+                      >
+                        +
+                      </button>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="ml-2 text-red-500 hover:text-red-700"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer with Total & Checkout */}
+            {cart.length > 0 && (
+              <div className="border-t p-4 space-y-3">
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Total:</span>
+                  <span>Rp {cartTotal.toLocaleString()}</span>
+                </div>
+                <button
+                  onClick={handleCheckout}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition"
+                >
+                  Checkout
+                </button>
+                <button
+                  onClick={clearCart}
+                  className="w-full text-sm text-gray-500 hover:text-red-500 underline"
+                >
+                  Clear Cart
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CHECKOUT CONFIRMATION MODAL */}
+      {showCheckoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={cancelCheckout} />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade-in-up">
+            <div className="text-center">
+              <div className="text-5xl mb-4">🍽️</div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">Confirm Your Order</h3>
+              <p className="text-gray-600 mb-4">
+                Please review your order before finalizing.
+              </p>
+              <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium">Total Items:</span>
+                  <span>{checkoutItems}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold text-orange-600">
+                  <span>Total Amount:</span>
+                  <span>Rp {checkoutTotal.toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={confirmOrder}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-xl transition"
+                >
+                  Confirm Order
+                </button>
+                <button
+                  onClick={cancelCheckout}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER */}
       <footer className="bg-white border-t border-gray-200 py-10">
         <div className="max-w-md mx-auto px-4 text-center">
           <p className="font-bold text-gray-800 text-lg mb-4">🍽️ Group RSI</p>
-          
           <div className="space-y-2 text-gray-600 text-sm">
             <p>• Lois Ryannareta (L0224006)</p>
             <p>• Rambat Ungu Ariyati (L0224010)</p>
@@ -274,7 +511,6 @@ export default function Home() {
             <p>• Adeliya Putri Hapsari (L0224029)</p>
             <p>• Rafah Taqy Arrahman (L0224047)</p>
           </div>
-          
           <p className="mt-6 text-xs text-gray-400">
             © {new Date().getFullYear()} RestoByte — Delicious moments, delivered.
           </p>
@@ -294,7 +530,7 @@ export default function Home() {
           }
         }
         .animate-fade-in-up {
-          animation: fadeInUp 0.6s ease-out forwards;
+          animation: fadeInUp 0.3s ease-out forwards;
         }
         .animation-delay-200 {
           animation-delay: 0.2s;
