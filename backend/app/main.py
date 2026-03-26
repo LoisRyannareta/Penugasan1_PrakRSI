@@ -41,6 +41,7 @@ def create_item(item: MenuItem):
     menu_db.append(new_item)
 
     return {
+        "code": 200,
         "message": "Item created",
         "data": new_item
     }
