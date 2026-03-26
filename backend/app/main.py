@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -41,27 +41,52 @@ def create_item(item: MenuItem):
     menu_db.append(new_item)
 
     return {
+        "code": 200,
         "message": "Item created",
         "data": new_item
     }
 
 # READ (GET)
 @app.get("/item")
-def get_item():
+def get_items():
     return menu_db
+
+# READ ONE (GET by id)
+@app.get("/item/{item_id}")
+def get_item(item_id: int):
+    for item in menu_db:
+        if item["id"] == item_id:
+            return {
+                "code": 200,
+                "message": "Item retrieved",
+                "data": item
+            }
+    raise HTTPException(status_code=404, detail="Item not found")
 
 # UPDATE (PUT)
 @app.put("/item/{item_id}")
 def update_item(item_id: int, item: MenuItem):
-    if item_id < len(menu_db):
-        menu_db[item_id] = item.dict()
-        return {"message": "Item updated"}
-    return {"message": "Item not found"}
+    for menu in menu_db:
+        if menu["id"] == item_id:
+            menu["name"] = item.name
+            menu["price"] = item.price
+            menu["category"] = item.category
+            return {
+                "code": 200,
+                "message": "Item updated",
+                "data": menu
+            }
+    raise HTTPException(status_code=404, detail="Item not found")
 
 # DELETE (DELETE)
 @app.delete("/item/{item_id}")
 def delete_item(item_id: int):
-    if item_id < len(menu_db):
-        menu_db.pop(item_id)
-        return {"message": "Item deleted"}
-    return {"message": "Item not found"}
+    for i, menu in enumerate(menu_db):
+        if menu["id"] == item_id:
+            deleted_item = menu_db.pop(i)
+            return {
+                "code": 200,
+                "message": "Item deleted",
+                "data": deleted_item
+            }
+    raise HTTPException(status_code=404, detail="Item not found")
